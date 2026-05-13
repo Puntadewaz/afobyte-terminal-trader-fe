@@ -54,7 +54,8 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
   const mode = useUiStore((state) => state.analysisMode);
   const setMode = useUiStore((state) => state.setAnalysisMode);
   const defaultSymbol = useMemo(() => marketToSymbol(market), [market]);
-  const { data: rankings } = useRankingsQuery(20);
+  const rankingMarket = market === "us" ? "us_stock" : market === "crypto" ? "crypto" : undefined;
+  const { data: rankings } = useRankingsQuery(20, rankingMarket);
 
   const recommendedSymbols = useMemo(() => {
     const rows = (rankings ?? [])

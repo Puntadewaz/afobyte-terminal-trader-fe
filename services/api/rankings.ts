@@ -1,6 +1,7 @@
 import { http } from "@/services/api/http";
 import type { RankingItem } from "@/types/market";
 import { mapRankings } from "@/services/api/mappers";
+import type { RankingsMarket } from "@/hooks/use-rankings";
 
 export const DEFAULT_RECOMMENDATION_LIMIT = 20;
 
@@ -19,9 +20,13 @@ interface RankingApiRow {
   risk_score: number;
 }
 
-export async function fetchRankings(limit = DEFAULT_RECOMMENDATION_LIMIT): Promise<RankingItem[]> {
+export async function fetchRankings(
+  limit = DEFAULT_RECOMMENDATION_LIMIT,
+  market?: RankingsMarket,
+): Promise<RankingItem[]> {
+  const marketQuery = market ? `&market=${encodeURIComponent(market)}` : "";
   const rows = await http<RankingApiRow[]>(
-    `/api/v1/rankings?type=swing&limit=${encodeURIComponent(String(limit))}`,
+    `/api/v1/rankings?type=swing&limit=${encodeURIComponent(String(limit))}${marketQuery}`,
   );
   return mapRankings(rows);
 }

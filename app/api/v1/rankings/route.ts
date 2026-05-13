@@ -3,10 +3,12 @@ import { fail } from "@/lib/api-envelope";
 import { proxyUpstream, requireUpstreamBase } from "@/lib/upstream-next";
 
 const allowedTypes = new Set(["long_term", "swing", "intraday"]);
+const allowedMarkets = new Set(["crypto", "us_stock"]);
 
 export async function GET(request: NextRequest) {
   const type = (request.nextUrl.searchParams.get("type") ?? "swing").trim();
   const limit = Number(request.nextUrl.searchParams.get("limit") ?? "20");
+  const market = request.nextUrl.searchParams.get("market")?.trim();
 
   if (!allowedTypes.has(type)) {
     return fail(400, "INVALID_TYPE", "type must be long_term, swing, or intraday");
@@ -16,12 +18,17 @@ export async function GET(request: NextRequest) {
     return fail(400, "INVALID_LIMIT", "limit must be a number between 1 and 50");
   }
 
+  if (market && !allowedMarkets.has(market)) {
+    return fail(400, "INVALID_MARKET", "market must be crypto or us_stock");
+  }
+
   const upstream = requireUpstreamBase();
   if ("error" in upstream) return upstream.error;
 
+  const marketQuery = market ? `&market=${encodeURIComponent(market)}` : "";
   const response = await proxyUpstream(
     upstream.base,
-    `/api/v1/rankings?type=${encodeURIComponent(type)}&limit=${encodeURIComponent(String(limit))}`,
+    `/api/v1/rankings?type=${encodeURIComponent(type)}&limit=${encodeURIComponent(String(limit))}${marketQuery}`,
   );
 
   return new Response(await response.text(), {
