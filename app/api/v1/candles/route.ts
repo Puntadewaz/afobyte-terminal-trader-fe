@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-envelope";
 import { proxyUpstream, requireUpstreamBase } from "@/lib/upstream-next";
+import { generateCandles } from "@/constants/mock-data";
 
 interface BinanceKlineRow extends Array<number | string> {
   0: number;
@@ -43,16 +44,26 @@ export async function GET(request: NextRequest) {
 
   if (market === "us" || market === "idx") {
     const upstream = requireUpstreamBase();
-    if ("error" in upstream) return upstream.error;
+    if (!("error" in upstream)) {
+      const response = await proxyUpstream(
+        upstream.base,
+        `/api/v1/candles?symbol=${encodeURIComponent(request.nextUrl.searchParams.get("symbol") ?? "")}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(String(limit))}`,
+      );
 
-    const response = await proxyUpstream(
-      upstream.base,
-      `/api/v1/candles?symbol=${encodeURIComponent(request.nextUrl.searchParams.get("symbol") ?? "")}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(String(limit))}`,
-    );
+      if (response.ok) {
+        return new Response(await response.text(), {
+          status: response.status,
+          headers: { "content-type": "application/json" },
+        });
+      }
+    }
 
-    return new Response(await response.text(), {
-      status: response.status,
-      headers: { "content-type": "application/json" },
+    const seedPrice = market === "idx" ? 9_000 : 190;
+    return ok(generateCandles(limit, seedPrice), {
+      symbol: request.nextUrl.searchParams.get("symbol") ?? "",
+      interval,
+      limit,
+      source: "mock-fallback",
     });
   }
 

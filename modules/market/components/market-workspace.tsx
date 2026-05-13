@@ -106,7 +106,7 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
   }
 
   const querySymbol = activeSymbol || undefined;
-  const { data: candles, isLoading } = useCandleQuery(market, querySymbol, chartInterval);
+  const { data: candles, isLoading, isError, error } = useCandleQuery(market, querySymbol, chartInterval);
   const { data: analysis, isLoading: isAnalysisLoading } = useAnalysisQuery(market, querySymbol);
   const usdToIdrRate = Number(process.env.NEXT_PUBLIC_USD_TO_IDR_RATE ?? DEFAULT_USD_TO_IDR_RATE);
 
@@ -268,8 +268,12 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
 
           {isWaitingForRankingSymbol ? (
             <p className="text-sm text-zinc-400">Waiting symbol from rankings...</p>
-          ) : isLoading || !chartCandles ? (
+          ) : isLoading ? (
             <p className="text-sm text-zinc-400">Rendering chart...</p>
+          ) : isError ? (
+            <p className="text-sm text-red-400">Failed to load candles: {error instanceof Error ? error.message : "Unknown error"}</p>
+          ) : !chartCandles || chartCandles.length === 0 ? (
+            <p className="text-sm text-zinc-400">No candle data available for this symbol yet.</p>
           ) : (
             <LightweightChart ref={chartRef} data={chartCandles} indicators={indicatorVisibility} />
           )}
