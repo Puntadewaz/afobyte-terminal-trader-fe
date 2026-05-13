@@ -5,7 +5,7 @@ const protectedPaths = [
   "/dashboard",
   "/crypto",
   // "/idx",
-  // "/us-stocks",
+  "/us-stocks",
   "/portfolio",
   "/watchlist",
   "/bookkeeping",

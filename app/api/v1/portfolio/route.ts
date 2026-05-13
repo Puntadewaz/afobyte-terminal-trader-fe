@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireUserId } from "@/lib/api-envelope";
+import { fail, requireUserId } from "@/lib/api-envelope";
 import { proxyUpstream, requireUpstreamBase } from "@/lib/upstream-next";
 
 export async function GET(request: NextRequest) {
@@ -39,7 +39,29 @@ export async function POST(request: NextRequest) {
     body,
   });
 
-  return new Response(await response.text(), {
+  const raw = await response.text();
+  if (!response.ok) {
+    try {
+      const parsed = JSON.parse(raw) as {
+        error?: { details?: unknown[] };
+      };
+      const details = (parsed.error?.details ?? []).map((item) => String(item));
+      const detailText = details.join(" ");
+
+      if (detailText.includes("portfolio_holdings_user_id_fkey")) {
+        return fail(
+          400,
+          "USER_NOT_REGISTERED",
+          "x-user-id is not registered in backend users table. Update NEXT_PUBLIC_API_USER_ID to a valid user id.",
+          details,
+        );
+      }
+    } catch {
+      // Keep upstream payload passthrough when response isn't JSON.
+    }
+  }
+
+  return new Response(raw, {
     status: response.status,
     headers: { "content-type": "application/json" },
   });

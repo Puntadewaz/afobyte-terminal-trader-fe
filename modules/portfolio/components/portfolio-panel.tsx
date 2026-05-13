@@ -62,7 +62,10 @@ export function PortfolioPanel() {
 
       await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
     } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : "Failed to save portfolio entry";
+      let message = submitError instanceof Error ? submitError.message : "Failed to save portfolio entry";
+      if (message.includes("USER_NOT_REGISTERED")) {
+        message = "User ID belum terdaftar di backend. Ubah NEXT_PUBLIC_API_USER_ID ke users.id yang valid.";
+      }
       setError(message);
     } finally {
       setIsSaving(false);
