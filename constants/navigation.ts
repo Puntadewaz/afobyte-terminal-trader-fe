@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
+  Brain,
   BookOpen,
   ChartNoAxesCombined,
   CircleDollarSign,
@@ -30,6 +31,7 @@ export const PLATFORM_NAV: NavItem[] = [
   { label: "Bookkeeping", href: "/bookkeeping", icon: CircleDollarSign },
   { label: "Alerts", href: "/alerts", icon: Bell },
   { label: "Journal", href: "/journal", icon: NotebookPen },
+  { label: "Psychology", href: "/psychology", icon: Brain },
   { label: "Risk Mgmt", href: "/risk-management", icon: ShieldAlert },
   { label: "Capital Planning", href: "/capital-planning", icon: Scale },
   { label: "Rankings", href: "/rankings", icon: BookOpen },

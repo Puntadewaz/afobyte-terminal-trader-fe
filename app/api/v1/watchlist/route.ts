@@ -1,20 +1,15 @@
 import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-envelope";
-
-const DEFAULT_WATCHLIST_URL = "http://127.0.0.1:8000/api/v1/watchlist";
-
-function getWatchlistUrl() {
-  return process.env.WATCHLIST_API_URL?.trim() || DEFAULT_WATCHLIST_URL;
-}
+import { proxyUpstream, requireUpstreamBase } from "@/lib/upstream-next";
 
 export async function GET(request: NextRequest) {
   const userId = request.headers.get("x-user-id");
+  const upstream = requireUpstreamBase();
+  if ("error" in upstream) return upstream.error;
 
   try {
-    const response = await fetch(getWatchlistUrl(), {
-      cache: "no-store",
+    const response = await proxyUpstream(upstream.base, "/api/v1/watchlist", {
       headers: {
-        "content-type": "application/json",
         ...(userId ? { "x-user-id": userId } : {}),
       },
     });

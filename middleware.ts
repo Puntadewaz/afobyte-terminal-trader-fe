@@ -11,6 +11,7 @@ const protectedPaths = [
   "/bookkeeping",
   "/alerts",
   "/journal",
+  "/psychology",
   "/risk-management",
   "/capital-planning",
   "/rankings",
