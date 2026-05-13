@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRankingsQuery } from "@/hooks/use-rankings";
+import { useRankingsQuery, type RankingsType } from "@/hooks/use-rankings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,8 @@ function stateVariant(state: string) {
 
 export function RankingTable() {
   const [activeTab, setActiveTab] = useState<RankingsTab>("crypto");
-  const { data, isLoading } = useRankingsQuery(20, activeTab);
+  const [rankingType, setRankingType] = useState<RankingsType>("swing");
+  const { data, isLoading } = useRankingsQuery(20, activeTab, rankingType);
 
   return (
     <Card>
@@ -51,6 +52,24 @@ export function RankingTable() {
             onClick={() => setActiveTab("us_stock")}
           >
             US Stocks
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={rankingType === "swing" ? "secondary" : "outline"}
+            onClick={() => setRankingType("swing")}
+          >
+            Swing
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={rankingType === "intraday" ? "secondary" : "outline"}
+            onClick={() => setRankingType("intraday")}
+          >
+            Intraday
           </Button>
         </div>
       </CardHeader>
