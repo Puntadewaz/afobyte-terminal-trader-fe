@@ -25,6 +25,8 @@ export interface AnalysisSignal {
   volatilityScore: number;
   manipulationRisk: Severity;
   recommendation?: string;
+  decision?: string;
+  decisionReason?: string;
   timeframe?: string;
   qualityScore?: number;
   providerSource?: string;

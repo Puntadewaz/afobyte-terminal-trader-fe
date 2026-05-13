@@ -48,6 +48,8 @@ interface AnalysisApiData {
   is_gorengan?: boolean;
   gorengan_reasons?: string[];
   recommendation?: string;
+  decision?: string;
+  decision_reason?: string;
   quality_score?: number;
   holding_duration?: string;
   cut_loss?: number;
@@ -86,6 +88,10 @@ interface AnalysisApiData {
         min: number;
         max: number;
       };
+    };
+    trading_decision?: {
+      action?: string;
+      reason?: string;
     };
     [key: string]: unknown;
   };
@@ -163,6 +169,8 @@ export function mapAnalysis(data: AnalysisApiData): AnalysisSignal {
   const topNegativeReasons = (data.explanation?.probability?.top_negative ?? [])
     .map((item) => (item.reason ?? "").trim())
     .filter(Boolean);
+  const decision = (data.decision ?? data.explanation?.trading_decision?.action ?? "").trim() || undefined;
+  const decisionReason = (data.decision_reason ?? data.explanation?.trading_decision?.reason ?? "").trim() || undefined;
 
   return {
     asset: data.symbol,
@@ -186,6 +194,8 @@ export function mapAnalysis(data: AnalysisApiData): AnalysisSignal {
     volatilityScore: Number((100 - data.confidence_score).toFixed(5)),
     manipulationRisk: mapRiskFromScore(data.manipulation_score),
     recommendation: data.recommendation,
+    decision,
+    decisionReason,
     timeframe: data.timeframe,
     isGorengan: data.is_gorengan ?? data.explanation?.is_gorengan,
     gorenganReasons,

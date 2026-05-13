@@ -8,14 +8,12 @@ const protectedPaths = [
   "/us-stocks",
   "/portfolio",
   "/watchlist",
-  "/bookkeeping",
   "/alerts",
   "/journal",
   "/psychology",
-  "/risk-management",
+  "/guide",
   "/capital-planning",
   "/rankings",
-  "/settings",
 ];
 
 function isProtectedPath(pathname: string): boolean {

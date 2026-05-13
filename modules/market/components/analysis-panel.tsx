@@ -49,6 +49,7 @@ export function AnalysisPanel({
           <Info label="Trend" value={data.trend} />
           <Info label="Timeframe" value={data.timeframe ?? "n/a"} />
           <Info label="Recommendation" value={data.recommendation ?? "n/a"} />
+          <Info label="Decision" value={data.decision ?? "n/a"} />
           <Info label="Volatility" value={`${data.volatilityScore}/100`} />
           <Info label="Manipulation Risk" value={data.manipulationRisk} />
           <Info label="Suggested Style" value={data.suggestedStyle} />
@@ -69,6 +70,13 @@ export function AnalysisPanel({
             <p className="text-xs uppercase tracking-[0.12em] text-zinc-500">Trading Plan</p>
             {data.tradeScenario ? <p className="mt-1 text-sm text-zinc-200">Scenario: {data.tradeScenario}</p> : null}
             {data.tradeNote ? <p className="mt-1 text-sm text-zinc-300">{data.tradeNote}</p> : null}
+          </div>
+        ) : null}
+
+        {data.decisionReason ? (
+          <div className="rounded-md border border-indigo-900/70 bg-indigo-950/20 p-3">
+            <p className="text-xs uppercase tracking-[0.12em] text-indigo-300">Decision Reason</p>
+            <p className="mt-1 text-sm text-zinc-100">{data.decisionReason}</p>
           </div>
         ) : null}
 

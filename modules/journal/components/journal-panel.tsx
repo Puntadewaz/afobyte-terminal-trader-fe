@@ -1,125 +1,108 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { http } from "@/services/api/http";
+import { useRankingsQuery } from "@/hooks/use-rankings";
 
 interface JournalRow {
   id: string;
-  asset: string;
-  setup: string;
-  outcome: string;
-  rr: number;
-  note: string;
-  mistake: string;
-}
-
-interface ApiJournalRow {
-  id: number;
   symbol: string;
-  market?: string;
-  setup_category: string;
-  pnl: string;
-  notes: string | null;
+  entryPrice: number;
+  exitPrice: number;
+  profitPct: number;
+  createdAt: string;
 }
 
 interface JournalFormState {
   symbol: string;
-  market: "crypto" | "idx" | "us";
-  setupCategory: string;
-  pnl: string;
-  notes: string;
+  entryPrice: string;
+  exitPrice: string;
 }
 
-export function JournalPanel() {
-  const queryClient = useQueryClient();
-  const [form, setForm] = useState<JournalFormState>({
-    symbol: "",
-    market: "crypto",
-    setupCategory: "breakout",
-    pnl: "0",
-    notes: "",
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const STORAGE_KEY = "journal-simple-v1";
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["journal"],
-    queryFn: async () => {
-      const rows = await http<ApiJournalRow[]>("/api/v1/journal", undefined, { withUserId: true });
-      return rows.map((row) => ({
-        id: String(row.id),
-        asset: row.symbol,
-        setup: row.setup_category,
-        outcome: Number(row.pnl) >= 0 ? "win" : "loss",
-        rr: 0,
-        note: row.notes ?? "No notes",
-        mistake: "n/a",
-      })) as JournalRow[];
-    },
+export function JournalPanel() {
+  const { data: cryptoRankings } = useRankingsQuery(20, "crypto", "swing");
+  const { data: usRankings } = useRankingsQuery(20, "us_stock", "swing");
+  const symbols = useMemo(() => {
+    const rows = [
+      ...(cryptoRankings ?? []).map((item) => item.symbol),
+      ...(usRankings ?? []).map((item) => item.symbol),
+      "BTCUSDT",
+      "ETHUSDT",
+      "AAPL",
+      "MSFT",
+    ];
+    return rows.filter((value, index, all) => Boolean(value) && all.indexOf(value) === index);
+  }, [cryptoRankings, usRankings]);
+
+  const [rows, setRows] = useState<JournalRow[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as JournalRow[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
+  const [form, setForm] = useState<JournalFormState>({
+    symbol: "BTCUSDT",
+    entryPrice: "",
+    exitPrice: "",
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+  }, [rows]);
 
   async function submitJournal(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
-    setIsSaving(true);
+    const entry = Number(form.entryPrice);
+    const exit = Number(form.exitPrice);
 
-    try {
-      await http(
-        "/api/v1/journal",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            symbol: form.symbol.trim().toUpperCase(),
-            market: form.market,
-            setup_category: form.setupCategory.trim(),
-            pnl: Number(form.pnl),
-            notes: form.notes.trim() || null,
-          }),
-        },
-        { withUserId: true },
-      );
-
-      setForm((prev) => ({
-        ...prev,
-        symbol: "",
-        pnl: "0",
-        notes: "",
-      }));
-
-      await queryClient.invalidateQueries({ queryKey: ["journal"] });
-    } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : "Failed to save journal entry";
-      setError(message);
-    } finally {
-      setIsSaving(false);
+    if (!Number.isFinite(entry) || !Number.isFinite(exit) || entry <= 0) {
+      return;
     }
+
+    const profitPct = ((exit - entry) / entry) * 100;
+    const payload: JournalRow = {
+      id: crypto.randomUUID(),
+      symbol: form.symbol.trim().toUpperCase(),
+      entryPrice: entry,
+      exitPrice: exit,
+      profitPct: Number(profitPct.toFixed(5)),
+      createdAt: new Date().toISOString(),
+    };
+
+    setRows((prev) => [payload, ...prev]);
+    setForm((prev) => ({ ...prev, entryPrice: "", exitPrice: "" }));
   }
 
-  const wins = data?.filter((d) => d.outcome === "win").length ?? 0;
-  const winRate = data?.length ? (wins / data.length) * 100 : 0;
+  const wins = rows.filter((d) => d.profitPct > 0).length;
+  const winRate = rows.length ? (wins / rows.length) * 100 : 0;
 
   return (
     <div className="grid gap-4 xl:grid-cols-3">
       <Card className="xl:col-span-2">
         <CardHeader>
-          <CardTitle>Trade Journal</CardTitle>
+          <CardTitle>Trade Journal (Simple Record)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {isLoading || !data ? (
-            <p className="text-sm text-zinc-400">Loading journal...</p>
+          {rows.length === 0 ? (
+            <p className="text-sm text-zinc-400">Belum ada catatan trading.</p>
           ) : (
-            data.map((row) => (
+            rows.map((row) => (
               <div key={row.id} className="rounded-md border border-zinc-800 p-3">
-                <p className="text-sm font-medium text-zinc-100">{row.asset} - {row.setup}</p>
-                <p className="text-xs text-zinc-400">Outcome: {row.outcome} | RR: {row.rr}</p>
-                <p className="text-sm text-zinc-300">{row.note}</p>
-                <p className="text-xs text-amber-300">Mistake: {row.mistake}</p>
+                <p className="text-sm font-medium text-zinc-100">{row.symbol}</p>
+                <p className="text-xs text-zinc-400">
+                  In: {row.entryPrice.toFixed(5)} | Out: {row.exitPrice.toFixed(5)} | PnL: {row.profitPct.toFixed(5)}%
+                </p>
+                <p className="text-xs text-zinc-500">{new Date(row.createdAt).toLocaleString()}</p>
               </div>
             ))
           )}
@@ -127,73 +110,53 @@ export function JournalPanel() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Add Journal Trade</CardTitle>
+          <CardTitle>Add Trade Record</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <form className="space-y-3" onSubmit={submitJournal}>
             <label className="grid gap-1 text-xs text-zinc-400">
               Symbol
-              <Input
+              <Select
                 value={form.symbol}
                 onChange={(event) => setForm((prev) => ({ ...prev, symbol: event.target.value }))}
-                placeholder="BTCUSDT"
-                required
-              />
-            </label>
-
-            <label className="grid gap-1 text-xs text-zinc-400">
-              Market
-              <Select
-                value={form.market}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, market: event.target.value as JournalFormState["market"] }))
-                }
               >
-                <option value="crypto">Crypto</option>
-                {/* <option value="idx">IDX</option> */}
-                {/* <option value="us">US</option> */}
+                {symbols.map((symbol) => (
+                  <option key={symbol} value={symbol}>
+                    {symbol}
+                  </option>
+                ))}
               </Select>
             </label>
 
             <label className="grid gap-1 text-xs text-zinc-400">
-              Setup Category
-              <Input
-                value={form.setupCategory}
-                onChange={(event) => setForm((prev) => ({ ...prev, setupCategory: event.target.value }))}
-                placeholder="breakout"
-                required
-              />
-            </label>
-
-            <label className="grid gap-1 text-xs text-zinc-400">
-              PnL
+              Entry Price (In)
               <Input
                 type="number"
                 step="any"
-                value={form.pnl}
-                onChange={(event) => setForm((prev) => ({ ...prev, pnl: event.target.value }))}
+                value={form.entryPrice}
+                onChange={(event) => setForm((prev) => ({ ...prev, entryPrice: event.target.value }))}
                 required
               />
             </label>
 
             <label className="grid gap-1 text-xs text-zinc-400">
-              Notes
+              Exit Price (Out)
               <Input
-                value={form.notes}
-                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-                placeholder="Entry reason, risk notes"
+                type="number"
+                step="any"
+                value={form.exitPrice}
+                onChange={(event) => setForm((prev) => ({ ...prev, exitPrice: event.target.value }))}
+                required
               />
             </label>
 
-            {error ? <p className="text-xs text-red-400">{error}</p> : null}
-
-            <Button type="submit" className="w-full" disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Journal Trade"}
+            <Button type="submit" className="w-full">
+              Save Journal Trade
             </Button>
           </form>
 
           <div className="space-y-1 border-t border-zinc-800 pt-3 text-xs text-zinc-400">
-            <p>Current Winrate: {winRate.toFixed(1)}%</p>
+            <p>Current Winrate: {winRate.toFixed(5)}%</p>
           </div>
         </CardContent>
       </Card>

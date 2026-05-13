@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { usePortfolioQuery } from "@/hooks/use-portfolio";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/format";
-import { http } from "@/services/api/http";
 
 interface PortfolioFormState {
   symbol: string;
@@ -18,9 +15,30 @@ interface PortfolioFormState {
   lastPrice: string;
 }
 
+interface PortfolioRow {
+  id: string;
+  symbol: string;
+  market: "crypto" | "idx" | "us";
+  quantity: number;
+  averageEntry: number;
+  currentPrice: number;
+  allocation: number;
+}
+
+const STORAGE_KEY = "portfolio-investment-v1";
+
 export function PortfolioPanel() {
-  const queryClient = useQueryClient();
-  const { data, isLoading } = usePortfolioQuery();
+  const [rows, setRows] = useState<PortfolioRow[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as PortfolioRow[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [form, setForm] = useState<PortfolioFormState>({
     symbol: "",
     market: "crypto",
@@ -28,59 +46,49 @@ export function PortfolioPanel() {
     avgCost: "",
     lastPrice: "",
   });
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+  }, [rows]);
+
+  const withAllocation = useMemo(() => {
+    const total = rows.reduce((acc, item) => acc + item.currentPrice * item.quantity, 0);
+    return rows.map((item) => ({
+      ...item,
+      allocation: total > 0 ? Number((((item.currentPrice * item.quantity) / total) * 100).toFixed(5)) : 0,
+    }));
+  }, [rows]);
 
   async function submitPortfolio(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
-    setIsSaving(true);
 
-    try {
-      await http(
-        "/api/v1/portfolio",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            symbol: form.symbol.trim().toUpperCase(),
-            market: form.market,
-            quantity: Number(form.quantity),
-            avg_cost: Number(form.avgCost),
-            last_price: Number(form.lastPrice),
-          }),
-        },
-        { withUserId: true },
-      );
+    const payload: PortfolioRow = {
+      id: crypto.randomUUID(),
+      symbol: form.symbol.trim().toUpperCase(),
+      market: form.market,
+      quantity: Number(form.quantity),
+      averageEntry: Number(form.avgCost),
+      currentPrice: Number(form.lastPrice),
+      allocation: 0,
+    };
 
-      setForm({
-        symbol: "",
-        market: form.market,
-        quantity: "",
-        avgCost: "",
-        lastPrice: "",
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
-    } catch (submitError) {
-      let message = submitError instanceof Error ? submitError.message : "Failed to save portfolio entry";
-      if (message.includes("USER_NOT_REGISTERED")) {
-        message = "User ID belum terdaftar di backend. Ubah NEXT_PUBLIC_API_USER_ID ke users.id yang valid.";
-      }
-      setError(message);
-    } finally {
-      setIsSaving(false);
+    if (!payload.symbol || payload.quantity <= 0 || payload.averageEntry <= 0 || payload.currentPrice <= 0) {
+      return;
     }
+
+    setRows((prev) => [payload, ...prev]);
+    setForm((prev) => ({ ...prev, symbol: "", quantity: "", avgCost: "", lastPrice: "" }));
   }
 
   return (
     <div className="grid gap-4 xl:grid-cols-3">
       <Card className="xl:col-span-2">
         <CardHeader>
-          <CardTitle>Holdings</CardTitle>
+          <CardTitle>Investment Records</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          {isLoading || !data ? (
-            <p className="text-sm text-zinc-400">Loading holdings...</p>
+          {withAllocation.length === 0 ? (
+            <p className="text-sm text-zinc-400">Belum ada catatan investment.</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="text-zinc-500">
@@ -93,10 +101,10 @@ export function PortfolioPanel() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((row) => (
-                  <tr key={row.symbol} className="border-b border-zinc-900/60">
+                {withAllocation.map((row) => (
+                  <tr key={row.id} className="border-b border-zinc-900/60">
                     <td className="px-2 py-2 text-zinc-200">{row.symbol}</td>
-                    <td className="px-2 py-2 text-zinc-300">{row.allocation}%</td>
+                    <td className="px-2 py-2 text-zinc-300">{row.allocation.toFixed(5)}%</td>
                     <td className="px-2 py-2 text-zinc-300">{formatCurrency(row.averageEntry)}</td>
                     <td className="px-2 py-2 text-zinc-300">{formatCurrency(row.currentPrice)}</td>
                     <td className="px-2 py-2 text-zinc-300">{row.quantity}</td>
@@ -110,7 +118,7 @@ export function PortfolioPanel() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add Portfolio Entry</CardTitle>
+          <CardTitle>Add Investment Record</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <form className="space-y-3" onSubmit={submitPortfolio}>
@@ -171,10 +179,8 @@ export function PortfolioPanel() {
               />
             </label>
 
-            {error ? <p className="text-xs text-red-400">{error}</p> : null}
-
-            <Button type="submit" className="w-full" disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Portfolio Entry"}
+            <Button type="submit" className="w-full">
+              Save Investment Record
             </Button>
           </form>
         </CardContent>

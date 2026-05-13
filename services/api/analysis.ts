@@ -25,6 +25,8 @@ interface AnalysisApiData {
   is_gorengan?: boolean;
   gorengan_reasons?: string[];
   recommendation?: string;
+  decision?: string;
+  decision_reason?: string;
   explanation?: Record<string, unknown>;
 }
 

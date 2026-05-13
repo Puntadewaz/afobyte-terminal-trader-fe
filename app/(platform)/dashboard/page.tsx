@@ -6,7 +6,7 @@ export default function DashboardPage() {
       <header>
         <h2 className="text-xl font-semibold text-zinc-100">Global Dashboard</h2>
         <p className="text-sm text-zinc-400">
-          Unified portfolio intelligence focused on Crypto market.
+          Ringkasan cepat untuk melihat kondisi portfolio, exposure risiko, sentimen market, dan alert terbaru.
         </p>
       </header>
       <DashboardOverview />
