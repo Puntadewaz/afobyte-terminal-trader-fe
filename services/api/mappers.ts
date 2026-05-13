@@ -29,7 +29,7 @@ export function mapRiskFromScore(score: number): RiskLevel {
 
 export function mapMarket(raw: string): MarketKind {
   if (raw === "idx") return "idx";
-  if (raw === "us" || raw === "us-stocks" || raw === "us_stocks") return "us";
+  if (raw === "us" || raw === "us-stocks" || raw === "us_stocks" || raw === "us_stock") return "us";
   return "crypto";
 }
 

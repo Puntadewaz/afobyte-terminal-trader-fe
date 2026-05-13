@@ -41,9 +41,13 @@ export async function fetchAnalysis(
   return mapAnalysis(payload);
 }
 
-export function fetchCandles(symbol = "BTCUSDT", interval: "1m" | "5m" | "15m" | "1h" | "4h" | "1d" = "15m") {
+export function fetchCandles(
+  symbol = "BTCUSDT",
+  interval: "1m" | "5m" | "15m" | "1h" | "4h" | "1d" = "15m",
+  market: MarketKind = "crypto",
+) {
   const selectedSymbol = symbol.trim() || "BTCUSDT";
   return http<Array<{ time: string; open: number; high: number; low: number; close: number }>>(
-    `/api/v1/candles?symbol=${encodeURIComponent(selectedSymbol)}&interval=${encodeURIComponent(interval)}&limit=300`,
+    `/api/v1/candles?symbol=${encodeURIComponent(selectedSymbol)}&interval=${encodeURIComponent(interval)}&market=${encodeURIComponent(market)}&limit=300`,
   );
 }

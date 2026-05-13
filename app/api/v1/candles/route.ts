@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-envelope";
+import { proxyUpstream, requireUpstreamBase } from "@/lib/upstream-next";
 
 interface BinanceKlineRow extends Array<number | string> {
   0: number;
@@ -34,10 +35,27 @@ function getCandleUpstreams(): string[] {
 }
 
 export async function GET(request: NextRequest) {
+  const market = (request.nextUrl.searchParams.get("market") ?? "crypto").trim();
   const symbol = normalizeSymbol(request.nextUrl.searchParams.get("symbol") ?? "BTCUSDT");
   const interval = request.nextUrl.searchParams.get("interval") ?? "15m";
   const limitParam = Number(request.nextUrl.searchParams.get("limit") ?? "300");
   const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 20), 1000) : 300;
+
+  if (market === "us" || market === "idx") {
+    const upstream = requireUpstreamBase();
+    if ("error" in upstream) return upstream.error;
+
+    const response = await proxyUpstream(
+      upstream.base,
+      `/api/v1/candles?symbol=${encodeURIComponent(request.nextUrl.searchParams.get("symbol") ?? "")}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(String(limit))}`,
+    );
+
+    return new Response(await response.text(), {
+      status: response.status,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   const upstreams = getCandleUpstreams();
 
   const path = `/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=${encodeURIComponent(String(limit))}`;

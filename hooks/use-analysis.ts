@@ -21,7 +21,7 @@ export function useAnalysisQuery(market: MarketKind, symbol?: string) {
 export function useCandleQuery(market: MarketKind, symbol?: string, interval: CandleInterval = "15m") {
   return useQuery({
     queryKey: ["candles", market, symbol, interval],
-    queryFn: () => fetchCandles(symbol, interval),
+    queryFn: () => fetchCandles(symbol, interval, market),
     enabled: Boolean(symbol),
     refetchInterval: 10_000,
   });
