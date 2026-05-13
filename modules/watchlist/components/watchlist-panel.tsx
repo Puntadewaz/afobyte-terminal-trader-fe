@@ -51,7 +51,7 @@ export function WatchlistPanel() {
                     {typeof item.last_price === "number" ? item.last_price.toLocaleString() : "-"}
                   </td>
                   <td className="px-2 py-2 text-zinc-300">
-                    {typeof item.change_pct === "number" ? `${item.change_pct.toFixed(2)}%` : "-"}
+                    {typeof item.change_pct === "number" ? `${item.change_pct.toFixed(5)}%` : "-"}
                   </td>
                   <td className="px-2 py-2 text-zinc-400">{item.note ?? "-"}</td>
                 </tr>

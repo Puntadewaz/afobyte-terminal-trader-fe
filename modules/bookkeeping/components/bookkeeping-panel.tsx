@@ -49,7 +49,7 @@ export function BookkeepingPanel() {
           <p className="text-2xl font-semibold text-zinc-100">
             {isLoading || !data
               ? "..."
-              : `${((net / Math.max(data.totals.deposits, 1)) * 100).toFixed(2)}%`}
+              : `${((net / Math.max(data.totals.deposits, 1)) * 100).toFixed(5)}%`}
           </p>
         </CardContent>
       </Card>

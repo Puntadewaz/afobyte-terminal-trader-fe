@@ -53,10 +53,10 @@ function makeFallbackCandles(symbol: string, market: string, limit: number) {
   return source.map((item, index) => {
     const wave = Math.sin((index + (hash % 97)) / 7) * ((hash % 11) * 0.15 + 0.4);
     const drift = ((index % 9) - 4) * ((hash % 13) * 0.03 + 0.05);
-    const close = Math.max(0.01, Number((item.close + wave + drift).toFixed(2)));
-    const open = Math.max(0.01, Number((item.open + wave * 0.7 + drift * 0.5).toFixed(2)));
-    const high = Number((Math.max(open, close) + 0.3 + (hash % 7) * 0.06).toFixed(2));
-    const low = Number((Math.max(0.01, Math.min(open, close) - 0.3 - (hash % 5) * 0.05)).toFixed(2));
+    const close = Math.max(0.01, Number((item.close + wave + drift).toFixed(5)));
+    const open = Math.max(0.01, Number((item.open + wave * 0.7 + drift * 0.5).toFixed(5)));
+    const high = Number((Math.max(open, close) + 0.3 + (hash % 7) * 0.06).toFixed(5));
+    const low = Number((Math.max(0.01, Math.min(open, close) - 0.3 - (hash % 5) * 0.05)).toFixed(5));
 
     return {
       ...item,

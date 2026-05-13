@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { LightweightChart, type LightweightChartHandle } from "@/components/charts/lightweight-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +11,10 @@ import { Select } from "@/components/ui/select";
 import { AdvancedChartWidget } from "@/components/widgets/tradingview/advanced-chart-widget";
 import { FundamentalDataWidget } from "@/components/widgets/tradingview/fundamental-data-widget";
 import { TechnicalAnalysisWidget } from "@/components/widgets/tradingview/technical-analysis-widget";
-import { useAnalysisQuery, type CandleInterval } from "@/hooks/use-analysis";
+import { useAnalysisQuery, useCandleQuery, type CandleInterval } from "@/hooks/use-analysis";
 import { useRankingsQuery } from "@/hooks/use-rankings";
 import { marketToSymbol } from "@/services/api/mappers";
-import { type SnapshotAnalysisResult } from "@/services/api/snapshot-analysis";
+import { analyzeSnapshot, type SnapshotAnalysisResult } from "@/services/api/snapshot-analysis";
 import { useUiStore } from "@/stores/ui-store";
 import type { MarketKind } from "@/types/market";
 import { AnalysisPanel } from "./analysis-panel";
@@ -79,6 +80,7 @@ function confidenceVariant(label?: string) {
 }
 
 export function MarketWorkspace({ market }: { market: MarketKind }) {
+  const snapshotChartRef = useRef<LightweightChartHandle | null>(null);
   const mode = useUiStore((state) => state.analysisMode);
   const setMode = useUiStore((state) => state.setAnalysisMode);
   const defaultSymbol = useMemo(() => marketToSymbol(market), [market]);
@@ -121,6 +123,12 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
   }
 
   const querySymbol = activeSymbol || undefined;
+  const {
+    data: candles,
+    isLoading: isCandlesLoading,
+    isError: isCandlesError,
+    error: candlesError,
+  } = useCandleQuery(market, querySymbol, chartInterval);
   const { data: analysis, isLoading: isAnalysisLoading } = useAnalysisQuery(market, querySymbol);
   const usdToIdrRate = Number(process.env.NEXT_PUBLIC_USD_TO_IDR_RATE ?? DEFAULT_USD_TO_IDR_RATE);
   const baseTradingViewSymbol = useMemo(() => toTradingViewSymbol(market, activeSymbol), [activeSymbol, market]);
@@ -144,10 +152,86 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
   const tradingViewSymbol = market === "us" ? (resolvedUsSymbol ?? `NASDAQ:${baseTradingViewSymbol}`) : baseTradingViewSymbol;
   const tradingViewInterval = useMemo(() => toTradingViewInterval(chartInterval), [chartInterval]);
   const technicalInterval = useMemo(() => toTechnicalAnalysisInterval(chartInterval), [chartInterval]);
+  const snapshotIndicators = useMemo(
+    () => ({
+      ema20: true,
+      ema50: true,
+      ema200: true,
+      rsi14: true,
+      macd: true,
+    }),
+    [],
+  );
+
+  const chartCandles = useMemo(() => {
+    if (!candles) return candles;
+    if (currency === "USD") return candles;
+
+    return candles.map((item) => ({
+      ...item,
+      open: Number((item.open * usdToIdrRate).toFixed(5)),
+      high: Number((item.high * usdToIdrRate).toFixed(5)),
+      low: Number((item.low * usdToIdrRate).toFixed(5)),
+      close: Number((item.close * usdToIdrRate).toFixed(5)),
+    }));
+  }, [candles, currency, usdToIdrRate]);
+
+  const structureConfidence: "low" | "medium" | "high" =
+    (analysis?.probability.confidence ?? 0) >= 70
+      ? "high"
+      : (analysis?.probability.confidence ?? 0) >= 50
+        ? "medium"
+        : "low";
+
+  const chartFeatures = {
+    vol_spike: (analysis?.manipulationRisk ?? "low") === "high" || (analysis?.manipulationRisk ?? "low") === "extreme",
+    vol_z: Number((((analysis?.volatilityScore ?? 0) / 100) * 3).toFixed(5)),
+    structure_confidence: structureConfidence,
+    symbol: activeSymbol,
+    interval: chartInterval,
+    market,
+  };
 
   async function handleAnalyzeSnapshot() {
-    setSnapshotAnalysis(null);
-    setSnapshotError("Analyze snapshot belum tersedia saat menggunakan TradingView Advanced Chart widget.");
+    setSnapshotError(null);
+
+    if (isCandlesLoading) {
+      setSnapshotError("Chart data masih loading. Coba lagi sebentar.");
+      return;
+    }
+
+    if (isCandlesError) {
+      setSnapshotError(`Gagal mengambil data candle: ${candlesError instanceof Error ? candlesError.message : "Unknown error"}`);
+      return;
+    }
+
+    if (!chartCandles || chartCandles.length === 0) {
+      setSnapshotError("Data candle tidak tersedia untuk snapshot.");
+      return;
+    }
+
+    const imageBase64 = snapshotChartRef.current?.takeSnapshot();
+    if (!imageBase64) {
+      setSnapshotError("Snapshot belum siap. Tunggu chart selesai render lalu coba lagi.");
+      return;
+    }
+
+    setIsSnapshotLoading(true);
+    try {
+      const result = await analyzeSnapshot({
+        imageBase64,
+        timeframe: mode,
+        chartFeatures,
+        symbol: activeSymbol,
+        interval: chartInterval,
+      });
+      setSnapshotAnalysis(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Analyze snapshot request failed";
+      setSnapshotError(message);
+    } finally {
+      setIsSnapshotLoading(false);
+    }
   }
 
   return (
@@ -241,7 +325,13 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
                 variant="outline"
                 size="sm"
                 onClick={handleAnalyzeSnapshot}
-                disabled={isSnapshotLoading || !isChartVisible}
+                disabled={
+                  isSnapshotLoading ||
+                  isWaitingForRankingSymbol ||
+                  isCandlesLoading ||
+                  !chartCandles ||
+                  chartCandles.length === 0
+                }
               >
                 {isSnapshotLoading ? "Analyzing..." : "Analyze Snapshot"}
               </Button>
@@ -313,7 +403,7 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
                 <p className="text-xs text-zinc-500">Confidence</p>
                 <p className="text-lg font-semibold text-zinc-100">
                   {typeof snapshotAnalysis.confidence === "number"
-                    ? `${snapshotAnalysis.confidence.toFixed(2)}%`
+                    ? `${snapshotAnalysis.confidence.toFixed(5)}%`
                     : "n/a"}
                 </p>
                 {snapshotAnalysis.confidenceLabel ? (
@@ -348,12 +438,12 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-md border border-zinc-800 p-3">
                 <p className="mb-1 text-xs text-zinc-500">Bullish Probability</p>
-                <p className="text-sm text-zinc-100">{snapshotAnalysis.bullishProbability.toFixed(2)}%</p>
+                <p className="text-sm text-zinc-100">{snapshotAnalysis.bullishProbability.toFixed(5)}%</p>
                 <Progress className="mt-2" value={snapshotAnalysis.bullishProbability} />
               </div>
               <div className="rounded-md border border-zinc-800 p-3">
                 <p className="mb-1 text-xs text-zinc-500">Bearish Probability</p>
-                <p className="text-sm text-zinc-100">{snapshotAnalysis.bearishProbability.toFixed(2)}%</p>
+                <p className="text-sm text-zinc-100">{snapshotAnalysis.bearishProbability.toFixed(5)}%</p>
                 <Progress className="mt-2" value={snapshotAnalysis.bearishProbability} />
               </div>
             </div>
@@ -425,6 +515,12 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
             )}
           </CardContent>
         </Card>
+      ) : null}
+
+      {chartCandles && chartCandles.length > 0 ? (
+        <div className="pointer-events-none fixed -left-[200vw] top-0 w-[1200px] opacity-0" aria-hidden>
+          <LightweightChart ref={snapshotChartRef} data={chartCandles} indicators={snapshotIndicators} />
+        </div>
       ) : null}
     </div>
   );

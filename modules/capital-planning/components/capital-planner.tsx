@@ -113,9 +113,9 @@ export function CapitalPlanner() {
         <CardContent className="space-y-2 text-sm text-zinc-300">
           {result ? (
             <>
-              <p>Required annualized growth: {result.required_growth_pct.toFixed(2)}%</p>
+              <p>Required annualized growth: {result.required_growth_pct.toFixed(5)}%</p>
               <p>Estimated trade count: {result.estimated_required_trades}</p>
-              <p>Estimated fee impact: {result.estimated_fee_impact.toFixed(2)}%</p>
+              <p>Estimated fee impact: {result.estimated_fee_impact.toFixed(5)}%</p>
               <p>Expectation: {result.realistic_expectation}</p>
               <p>{result.diversification_suggestion}</p>
               {result.feasibility_warning.length > 0 ? (

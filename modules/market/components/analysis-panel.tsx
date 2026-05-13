@@ -133,7 +133,7 @@ export function AnalysisPanel({
 }
 
 function formatMetric(value: number): string {
-  return value.toFixed(2);
+  return value.toFixed(5);
 }
 
 function formatPrice(value: number, currency: PriceCurrency, usdToIdrRate: number): string {
@@ -144,7 +144,7 @@ function formatPrice(value: number, currency: PriceCurrency, usdToIdrRate: numbe
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    maximumFractionDigits: currency === "IDR" ? 0 : 2,
+    maximumFractionDigits: currency === "IDR" ? 0 : 5,
   }).format(converted);
 }
 

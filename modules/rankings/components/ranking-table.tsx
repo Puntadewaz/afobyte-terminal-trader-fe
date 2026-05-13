@@ -88,7 +88,7 @@ export function RankingTable() {
                   <td className="px-2 py-2 text-zinc-300">{item.liquidityScore.toFixed(1)}</td>
                   <td className="px-2 py-2 text-zinc-300">{item.cycleConfirmations}</td>
                   <td className="px-2 py-2 text-zinc-300">
-                    {item.risk} ({item.riskScore.toFixed(2)})
+                    {item.risk} ({item.riskScore.toFixed(5)})
                   </td>
                   <td className="px-2 py-2">
                     <Badge variant={stateVariant(item.state)}>{item.state}</Badge>

@@ -29,10 +29,10 @@ export function generateCandles(length = 80, start = 100): Array<{
     last = close;
     return {
       time: new Date(Date.now() - (length - i) * 86_400_000).toISOString(),
-      open: Number(open.toFixed(2)),
-      high: Number(high.toFixed(2)),
-      low: Number(low.toFixed(2)),
-      close: Number(close.toFixed(2)),
+      open: Number(open.toFixed(5)),
+      high: Number(high.toFixed(5)),
+      low: Number(low.toFixed(5)),
+      close: Number(close.toFixed(5)),
     };
   });
 }

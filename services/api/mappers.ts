@@ -170,9 +170,9 @@ export function mapAnalysis(data: AnalysisApiData): AnalysisSignal {
     market: mapMarket(data.market),
     trend: data.bullish_probability >= 60 ? "bullish" : data.bearish_probability >= 60 ? "bearish" : "sideways",
     probability: {
-      bullish: Number(data.bullish_probability.toFixed(2)),
-      bearish: Number(data.bearish_probability.toFixed(2)),
-      confidence: Number(data.confidence_score.toFixed(2)),
+      bullish: Number(data.bullish_probability.toFixed(5)),
+      bearish: Number(data.bearish_probability.toFixed(5)),
+      confidence: Number(data.confidence_score.toFixed(5)),
     },
     confidenceLabel: data.confidence_label,
     risk: data.risk_level,
@@ -183,7 +183,7 @@ export function mapAnalysis(data: AnalysisApiData): AnalysisSignal {
     uncertaintyScore: data.explanation?.probability?.uncertainty_score,
     topPositiveReasons,
     topNegativeReasons,
-    volatilityScore: Number((100 - data.confidence_score).toFixed(2)),
+    volatilityScore: Number((100 - data.confidence_score).toFixed(5)),
     manipulationRisk: mapRiskFromScore(data.manipulation_score),
     recommendation: data.recommendation,
     timeframe: data.timeframe,
@@ -232,7 +232,7 @@ export function mapRankings(rows: RankingApiRow[]): RankingItem[] {
     confidence: Number(row.confidence_score.toFixed(1)),
     liquidityScore: Number(row.liquidity_score.toFixed(1)),
     cycleConfirmations: row.cycle_confirmations,
-    riskScore: Number(row.risk_score.toFixed(2)),
+    riskScore: Number(row.risk_score.toFixed(5)),
     risk: mapRiskFromScore(row.risk_score),
     marketQuality: Number(row.quality_score.toFixed(1)),
     state: row.state,
@@ -256,7 +256,7 @@ export function mapPortfolio(rows: PortfolioApiRow[]): PortfolioHolding[] {
   return rows.map((row, index) => ({
     symbol: row.symbol,
     market: mapMarket(row.market),
-    allocation: total > 0 ? Number(((totals[index] / total) * 100).toFixed(2)) : 0,
+    allocation: total > 0 ? Number(((totals[index] / total) * 100).toFixed(5)) : 0,
     averageEntry: Number(row.avg_cost),
     currentPrice: Number(row.last_price),
     quantity: Number(row.quantity),
@@ -279,19 +279,19 @@ export function toDashboardSnapshot(rankings: RankingItem[], holdings: Portfolio
       {
         label: "Crypto",
         value: Number(
-          holdings.filter((h) => h.market === "crypto").reduce((acc, h) => acc + h.allocation, 0).toFixed(2),
+          holdings.filter((h) => h.market === "crypto").reduce((acc, h) => acc + h.allocation, 0).toFixed(5),
         ),
       },
       {
         label: "IDX",
         value: Number(
-          holdings.filter((h) => h.market === "idx").reduce((acc, h) => acc + h.allocation, 0).toFixed(2),
+          holdings.filter((h) => h.market === "idx").reduce((acc, h) => acc + h.allocation, 0).toFixed(5),
         ),
       },
       {
         label: "US",
         value: Number(
-          holdings.filter((h) => h.market === "us").reduce((acc, h) => acc + h.allocation, 0).toFixed(2),
+          holdings.filter((h) => h.market === "us").reduce((acc, h) => acc + h.allocation, 0).toFixed(5),
         ),
       },
     ],
