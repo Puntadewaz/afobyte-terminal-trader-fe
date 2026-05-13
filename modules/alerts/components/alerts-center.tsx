@@ -5,6 +5,7 @@ import { useAlertsQuery } from "@/hooks/use-alerts";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { FcmAlertSubscription } from "@/modules/alerts/components/fcm-alert-subscription";
 
 export function AlertsCenter() {
   const { data, isLoading } = useAlertsQuery();
@@ -26,6 +27,8 @@ export function AlertsCenter() {
         </Select>
       </CardHeader>
       <CardContent className="space-y-2">
+        <FcmAlertSubscription />
+
         {isLoading ? (
           <p className="text-sm text-zinc-400">Loading alerts...</p>
         ) : (

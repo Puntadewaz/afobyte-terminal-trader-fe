@@ -12,6 +12,8 @@ This platform is designed to help users think better, not trade emotionally.
 - TanStack Query for server state
 - React Hook Form + Zod for validated forms
 - Lightweight Charts for trading visualization
+- Web App Manifest + Service Worker for PWA support
+- Firebase Cloud Messaging (FCM) for push alerts
 - Playwright + Vitest + React Testing Library
 
 ## Product Principles
@@ -190,6 +192,25 @@ These routes currently return deterministic mock intelligence suitable for UI de
 ```bash
 npm run dev
 ```
+
+## PWA + FCM Setup
+
+Add these environment variables for web push notifications:
+
+```bash
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_VAPID_KEY=
+```
+
+Backend should expose FCM registration endpoint used by FE proxy:
+
+- `POST /api/v1/alerts/fcm/register`
+- Python internal path expected by FE: `/alerts/fcm/register`
 
 ## Validate
 
