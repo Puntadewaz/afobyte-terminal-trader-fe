@@ -5,6 +5,7 @@ import { TradingViewScriptWidget } from "@/components/widgets/tradingview/tradin
 interface MarketSummaryWidgetProps {
   title?: string;
   symbols?: string[];
+  tabs?: Array<{ title: string; symbols: string[] }>;
   minHeight?: number;
 }
 
@@ -27,8 +28,24 @@ function toRows(symbols?: string[]) {
 export function MarketSummaryWidget({
   title = "Watchlist",
   symbols,
+  tabs,
   minHeight = 520,
 }: MarketSummaryWidgetProps) {
+  const resolvedTabs =
+    tabs && tabs.length > 0
+      ? tabs.map((tab) => ({
+          title: tab.title,
+          symbols: toRows(tab.symbols),
+          originalTitle: tab.title,
+        }))
+      : [
+          {
+            title,
+            symbols: toRows(symbols),
+            originalTitle: title,
+          },
+        ];
+
   return (
     <TradingViewScriptWidget
       scriptSrc="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js"
@@ -50,13 +67,7 @@ export function MarketSummaryWidget({
         belowLineFillColorGrowingBottom: "rgba(34, 197, 94, 0.03)",
         belowLineFillColorFallingBottom: "rgba(239, 68, 68, 0.03)",
         symbolActiveColor: "rgba(6, 182, 212, 0.22)",
-        tabs: [
-          {
-            title,
-            symbols: toRows(symbols),
-            originalTitle: title,
-          },
-        ],
+        tabs: resolvedTabs,
         support_host: "https://www.tradingview.com",
       }}
       minHeight={minHeight}
