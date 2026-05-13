@@ -4,7 +4,22 @@ import { fail, ok } from "@/lib/api-envelope";
 const DEFAULT_ANALYZE_SNAPSHOT_URL = "http://127.0.0.1:8000/api/v1/analyze-snapshot";
 
 function getAnalyzeSnapshotUrl() {
-  return process.env.ANALYZE_SNAPSHOT_URL?.trim() || DEFAULT_ANALYZE_SNAPSHOT_URL;
+  const explicitUrl = process.env.ANALYZE_SNAPSHOT_URL?.trim();
+  if (explicitUrl) return explicitUrl;
+
+  const base =
+    process.env.PYTHON_ANALYTICS_ENDPOINT?.trim() ||
+    process.env.UPSTREAM_NEXT_API_BASE_URL?.trim() ||
+    process.env.BACKEND_API_BASE_URL?.trim() ||
+    "";
+
+  if (!base) return DEFAULT_ANALYZE_SNAPSHOT_URL;
+
+  if (base.endsWith("/api/v1/analyze-snapshot")) {
+    return base;
+  }
+
+  return `${base.replace(/\/$/, "")}/api/v1/analyze-snapshot`;
 }
 
 export async function POST(request: NextRequest) {
