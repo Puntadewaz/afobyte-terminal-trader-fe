@@ -7,6 +7,7 @@ interface TradingViewScriptWidgetProps {
   config: Record<string, unknown>;
   className?: string;
   minHeight?: number;
+  loadTimeoutMs?: number;
 }
 
 export function TradingViewScriptWidget({
@@ -14,6 +15,7 @@ export function TradingViewScriptWidget({
   config,
   className,
   minHeight = 420,
+  loadTimeoutMs = 7000,
 }: TradingViewScriptWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -37,13 +39,18 @@ export function TradingViewScriptWidget({
     script.onload = () => setIsLoaded(true);
     script.onerror = () => setIsLoaded(true);
 
+    const timeoutId = window.setTimeout(() => {
+      setIsLoaded(true);
+    }, loadTimeoutMs);
+
     container.appendChild(widgetHost);
     container.appendChild(script);
 
     return () => {
+      window.clearTimeout(timeoutId);
       container.innerHTML = "";
     };
-  }, [scriptSrc, serializedConfig]);
+  }, [loadTimeoutMs, scriptSrc, serializedConfig]);
 
   return (
     <div className={["tradingview-widget-container relative w-full", className ?? ""].join(" ")}>

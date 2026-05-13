@@ -37,6 +37,15 @@ function toTradingViewInterval(interval: CandleInterval): string {
   return "D";
 }
 
+function toTechnicalAnalysisInterval(interval: CandleInterval): string {
+  if (interval === "1m") return "1m";
+  if (interval === "5m") return "5m";
+  if (interval === "15m") return "15m";
+  if (interval === "1h") return "1h";
+  if (interval === "4h") return "4h";
+  return "1D";
+}
+
 function toTradingViewSymbol(market: MarketKind, symbol: string): string {
   const normalized = symbol.trim().toUpperCase();
   if (!normalized) return "BINANCE:BTCUSDT";
@@ -134,6 +143,7 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
   });
   const tradingViewSymbol = market === "us" ? (resolvedUsSymbol ?? `NASDAQ:${baseTradingViewSymbol}`) : baseTradingViewSymbol;
   const tradingViewInterval = useMemo(() => toTradingViewInterval(chartInterval), [chartInterval]);
+  const technicalInterval = useMemo(() => toTechnicalAnalysisInterval(chartInterval), [chartInterval]);
 
   async function handleAnalyzeSnapshot() {
     setSnapshotAnalysis(null);
@@ -249,7 +259,7 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
                 <AdvancedChartWidget
                   symbol={tradingViewSymbol}
                   interval={tradingViewInterval}
-                  minHeight={560}
+                  minHeight={440}
                 />
               )}
             </>
@@ -258,13 +268,13 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
       </Card>
 
       {market === "crypto" || market === "us" ? (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Technical Analysis (TradingView)</CardTitle>
             </CardHeader>
             <CardContent>
-              <TechnicalAnalysisWidget symbol={tradingViewSymbol} interval={tradingViewInterval} minHeight={430} />
+              <TechnicalAnalysisWidget symbol={tradingViewSymbol} interval={technicalInterval} minHeight={380} />
             </CardContent>
           </Card>
 
@@ -273,7 +283,7 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
               <CardTitle>Fundamental Data (TradingView)</CardTitle>
             </CardHeader>
             <CardContent>
-              <FundamentalDataWidget symbol={tradingViewSymbol} minHeight={430} />
+              <FundamentalDataWidget symbol={tradingViewSymbol} minHeight={380} />
             </CardContent>
           </Card>
         </div>

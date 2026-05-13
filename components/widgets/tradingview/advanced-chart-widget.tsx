@@ -15,13 +15,14 @@ export function AdvancedChartWidget({
   symbol,
   interval,
   theme = "dark",
-  minHeight = 560,
+  minHeight = 460,
 }: AdvancedChartWidgetProps) {
   return (
     <TradingViewScriptWidget
       scriptSrc="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"
       config={{
-        autosize: true,
+        width: "100%",
+        height: minHeight,
         symbol,
         interval,
         timezone: "Etc/UTC",
