@@ -1,16 +1,19 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { LightweightChart, type LightweightChartHandle } from "@/components/charts/lightweight-chart";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Select } from "@/components/ui/select";
-import { useAnalysisQuery, useCandleQuery, type CandleInterval } from "@/hooks/use-analysis";
+import { AdvancedChartWidget } from "@/components/widgets/tradingview/advanced-chart-widget";
+import { FundamentalDataWidget } from "@/components/widgets/tradingview/fundamental-data-widget";
+import { TechnicalAnalysisWidget } from "@/components/widgets/tradingview/technical-analysis-widget";
+import { useAnalysisQuery, type CandleInterval } from "@/hooks/use-analysis";
 import { useRankingsQuery } from "@/hooks/use-rankings";
 import { marketToSymbol } from "@/services/api/mappers";
-import { analyzeSnapshot, type SnapshotAnalysisResult } from "@/services/api/snapshot-analysis";
+import { type SnapshotAnalysisResult } from "@/services/api/snapshot-analysis";
 import { useUiStore } from "@/stores/ui-store";
 import type { MarketKind } from "@/types/market";
 import { AnalysisPanel } from "./analysis-panel";
@@ -23,17 +26,34 @@ const labelMap: Record<MarketKind, string> = {
 
 const CHART_INTERVALS: CandleInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
 const DEFAULT_USD_TO_IDR_RATE = 16_000;
-
-const INDICATOR_LABELS = {
-  ema20: "EMA20",
-  ema50: "EMA50",
-  ema200: "EMA200",
-  rsi14: "RSI14",
-  macd: "MACD",
-} as const;
-
-type IndicatorKey = keyof typeof INDICATOR_LABELS;
 type PriceCurrency = "USD" | "IDR";
+
+function toTradingViewInterval(interval: CandleInterval): string {
+  if (interval === "1m") return "1";
+  if (interval === "5m") return "5";
+  if (interval === "15m") return "15";
+  if (interval === "1h") return "60";
+  if (interval === "4h") return "240";
+  return "D";
+}
+
+function toTradingViewSymbol(market: MarketKind, symbol: string): string {
+  const normalized = symbol.trim().toUpperCase();
+  if (!normalized) return "BINANCE:BTCUSDT";
+  if (market === "crypto") {
+    if (normalized.includes(":")) return normalized;
+    if (normalized.endsWith("USDT")) return `BINANCE:${normalized}`;
+    return `BINANCE:${normalized}USDT`;
+  }
+
+  if (market === "idx") {
+    if (normalized.includes(":")) return normalized;
+    return `IDX:${normalized}`;
+  }
+
+  if (normalized.includes(":")) return normalized;
+  return normalized;
+}
 
 function recommendationVariant(recommendation?: string) {
   if (!recommendation) return "neutral" as const;
@@ -50,7 +70,6 @@ function confidenceVariant(label?: string) {
 }
 
 export function MarketWorkspace({ market }: { market: MarketKind }) {
-  const chartRef = useRef<LightweightChartHandle | null>(null);
   const mode = useUiStore((state) => state.analysisMode);
   const setMode = useUiStore((state) => state.setAnalysisMode);
   const defaultSymbol = useMemo(() => marketToSymbol(market), [market]);
@@ -74,13 +93,7 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
   const [selectedSymbol, setSelectedSymbol] = useState(() => (market === "crypto" ? "" : defaultSymbol));
   const [chartInterval, setChartInterval] = useState<CandleInterval>("15m");
   const [currency, setCurrency] = useState<PriceCurrency>("USD");
-  const [indicatorVisibility, setIndicatorVisibility] = useState<Record<IndicatorKey, boolean>>({
-    ema20: true,
-    ema50: true,
-    ema200: true,
-    rsi14: true,
-    macd: true,
-  });
+  const [isChartVisible, setIsChartVisible] = useState(true);
   const [snapshotAnalysis, setSnapshotAnalysis] = useState<SnapshotAnalysisResult | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [isSnapshotLoading, setIsSnapshotLoading] = useState(false);
@@ -98,72 +111,33 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
     setIsSnapshotLoading(false);
   }
 
-  function toggleIndicator(indicator: IndicatorKey) {
-    setIndicatorVisibility((prev) => ({
-      ...prev,
-      [indicator]: !prev[indicator],
-    }));
-  }
-
   const querySymbol = activeSymbol || undefined;
-  const { data: candles, isLoading, isError, error } = useCandleQuery(market, querySymbol, chartInterval);
   const { data: analysis, isLoading: isAnalysisLoading } = useAnalysisQuery(market, querySymbol);
   const usdToIdrRate = Number(process.env.NEXT_PUBLIC_USD_TO_IDR_RATE ?? DEFAULT_USD_TO_IDR_RATE);
+  const baseTradingViewSymbol = useMemo(() => toTradingViewSymbol(market, activeSymbol), [activeSymbol, market]);
+  const { data: resolvedUsSymbol, isLoading: isResolvingUsSymbol } = useQuery({
+    queryKey: ["tradingview-symbol-resolver", activeSymbol],
+    enabled: market === "us" && Boolean(activeSymbol),
+    staleTime: 1000 * 60 * 60,
+    queryFn: async () => {
+      const response = await fetch(`/api/v1/tradingview/resolve-symbol?symbol=${encodeURIComponent(activeSymbol)}`, {
+        cache: "no-store",
+      });
+      const json = (await response.json()) as {
+        success?: boolean;
+        data?: { symbol?: string };
+      };
 
-  const chartCandles = useMemo(() => {
-    if (!candles) return candles;
-    if (currency === "USD") return candles;
-
-    return candles.map((item) => ({
-      ...item,
-      open: Number((item.open * usdToIdrRate).toFixed(2)),
-      high: Number((item.high * usdToIdrRate).toFixed(2)),
-      low: Number((item.low * usdToIdrRate).toFixed(2)),
-      close: Number((item.close * usdToIdrRate).toFixed(2)),
-    }));
-  }, [candles, currency, usdToIdrRate]);
-
-  const structureConfidence: "low" | "medium" | "high" =
-    (analysis?.probability.confidence ?? 0) >= 70
-      ? "high"
-      : (analysis?.probability.confidence ?? 0) >= 50
-        ? "medium"
-        : "low";
-
-  const chartFeatures = {
-    vol_spike: (analysis?.manipulationRisk ?? "low") === "high" || (analysis?.manipulationRisk ?? "low") === "extreme",
-    vol_z: Number((((analysis?.volatilityScore ?? 0) / 100) * 3).toFixed(2)),
-    structure_confidence: structureConfidence,
-    symbol: activeSymbol,
-    interval: chartInterval,
-    market,
-  };
+      if (!response.ok || !json.success) return null;
+      return json.data?.symbol ?? null;
+    },
+  });
+  const tradingViewSymbol = market === "us" ? (resolvedUsSymbol ?? `NASDAQ:${baseTradingViewSymbol}`) : baseTradingViewSymbol;
+  const tradingViewInterval = useMemo(() => toTradingViewInterval(chartInterval), [chartInterval]);
 
   async function handleAnalyzeSnapshot() {
-    setSnapshotError(null);
-    const imageBase64 = chartRef.current?.takeSnapshot();
-
-    if (!imageBase64) {
-      setSnapshotError("Snapshot gagal diambil. Tunggu chart selesai render lalu coba lagi.");
-      return;
-    }
-
-    setIsSnapshotLoading(true);
-    try {
-      const result = await analyzeSnapshot({
-        imageBase64,
-        timeframe: mode,
-        chartFeatures,
-        symbol: activeSymbol,
-        interval: chartInterval,
-      });
-      setSnapshotAnalysis(result);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Analyze snapshot request failed";
-      setSnapshotError(message);
-    } finally {
-      setIsSnapshotLoading(false);
-    }
+    setSnapshotAnalysis(null);
+    setSnapshotError("Analyze snapshot belum tersedia saat menggunakan TradingView Advanced Chart widget.");
   }
 
   return (
@@ -239,46 +213,71 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
       <Card>
         <CardHeader>
           <div className="flex w-full items-center justify-between gap-2">
-            <CardTitle>Lightweight Chart (TradingView Library) - {chartInterval} ({currency})</CardTitle>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAnalyzeSnapshot}
-              disabled={isWaitingForRankingSymbol || isLoading || !candles || isSnapshotLoading}
-            >
-              {isSnapshotLoading ? "Analyzing..." : "Analyze Snapshot"}
-            </Button>
+            <CardTitle>TradingView Advanced Chart - {chartInterval} ({currency})</CardTitle>
+            <div className="flex items-center gap-2">
+              {market === "us" ? (
+                <Badge variant="info">{isResolvingUsSymbol ? "Resolving exchange..." : tradingViewSymbol}</Badge>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsChartVisible((prev) => !prev)}
+              >
+                {isChartVisible ? "Hide Chart" : "Show Chart"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAnalyzeSnapshot}
+                disabled={isSnapshotLoading || !isChartVisible}
+              >
+                {isSnapshotLoading ? "Analyzing..." : "Analyze Snapshot"}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 flex flex-wrap gap-2">
-            {(Object.keys(INDICATOR_LABELS) as IndicatorKey[]).map((indicator) => (
-              <Button
-                key={indicator}
-                type="button"
-                size="sm"
-                variant={indicatorVisibility[indicator] ? "secondary" : "outline"}
-                onClick={() => toggleIndicator(indicator)}
-              >
-                {INDICATOR_LABELS[indicator]}
-              </Button>
-            ))}
-          </div>
-
-          {isWaitingForRankingSymbol ? (
-            <p className="text-sm text-zinc-400">Waiting symbol from rankings...</p>
-          ) : isLoading ? (
-            <p className="text-sm text-zinc-400">Rendering chart...</p>
-          ) : isError ? (
-            <p className="text-sm text-red-400">Failed to load candles: {error instanceof Error ? error.message : "Unknown error"}</p>
-          ) : !chartCandles || chartCandles.length === 0 ? (
-            <p className="text-sm text-zinc-400">No candle data available for this symbol yet.</p>
+          {!isChartVisible ? (
+            <p className="text-sm text-zinc-400">Chart is hidden.</p>
           ) : (
-            <LightweightChart ref={chartRef} data={chartCandles} indicators={indicatorVisibility} />
+            <>
+              {isWaitingForRankingSymbol ? (
+                <p className="text-sm text-zinc-400">Waiting symbol from rankings...</p>
+              ) : (
+                <AdvancedChartWidget
+                  symbol={tradingViewSymbol}
+                  interval={tradingViewInterval}
+                  minHeight={560}
+                />
+              )}
+            </>
           )}
         </CardContent>
       </Card>
+
+      {market === "crypto" || market === "us" ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Technical Analysis (TradingView)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TechnicalAnalysisWidget symbol={tradingViewSymbol} interval={tradingViewInterval} minHeight={430} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Fundamental Data (TradingView)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FundamentalDataWidget symbol={tradingViewSymbol} minHeight={430} />
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       <Card className="border-cyan-800/70">
         <CardHeader>

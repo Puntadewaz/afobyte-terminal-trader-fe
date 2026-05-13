@@ -1,25 +1,39 @@
 "use client";
 
+import { MarketSummaryWidget } from "@/components/widgets/tradingview/market-summary-widget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWatchlistQuery } from "@/hooks/use-watchlist";
 
 export function WatchlistPanel() {
   const { data, isLoading, error } = useWatchlistQuery();
+  const widgetSymbols = (data ?? []).slice(0, 12).map((item) => {
+    const normalized = item.symbol.trim().toUpperCase();
+    if (!normalized) return "BINANCE:BTCUSDT";
+    if (normalized.includes(":")) return normalized;
+    if (normalized.endsWith("USDT")) return `BINANCE:${normalized}`;
+    return `BINANCE:${normalized}USDT`;
+  });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Crypto Watchlist</CardTitle>
+        <CardTitle>Watchlist Market Summary</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 overflow-x-auto">
         {isLoading ? <p className="text-sm text-zinc-400">Loading watchlist...</p> : null}
         {error ? <p className="text-sm text-red-400">Failed to load watchlist.</p> : null}
+
+        <div className="rounded-lg border border-zinc-800 p-2">
+          <MarketSummaryWidget title="My Watchlist" symbols={widgetSymbols} minHeight={500} />
+        </div>
 
         {!isLoading && !error && (data?.length ?? 0) === 0 ? (
           <p className="text-sm text-zinc-400">No watchlist symbols found.</p>
         ) : null}
 
         {!isLoading && !error && (data?.length ?? 0) > 0 ? (
+          <>
+            <p className="pt-2 text-xs uppercase tracking-[0.12em] text-zinc-500">Synced watchlist data</p>
           <table className="w-full text-sm">
             <thead className="text-zinc-500">
               <tr className="border-b border-zinc-800">
@@ -44,6 +58,7 @@ export function WatchlistPanel() {
               ))}
             </tbody>
           </table>
+          </>
         ) : null}
       </CardContent>
     </Card>
