@@ -35,8 +35,42 @@ function getCandleUpstreams(): string[] {
   ];
 }
 
+function symbolHash(input: string): number {
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 31 + input.charCodeAt(index)) % 1_000_000_007;
+  }
+  return Math.abs(hash);
+}
+
+function makeFallbackCandles(symbol: string, market: string, limit: number) {
+  const hash = symbolHash(symbol || "UNKNOWN");
+  const baseStart = market === "idx" ? 9_000 : 190;
+  const start = baseStart + (hash % 500) * 0.2;
+  const source = generateCandles(limit, start);
+
+  // Add deterministic, symbol-specific shape so each symbol has distinct movement.
+  return source.map((item, index) => {
+    const wave = Math.sin((index + (hash % 97)) / 7) * ((hash % 11) * 0.15 + 0.4);
+    const drift = ((index % 9) - 4) * ((hash % 13) * 0.03 + 0.05);
+    const close = Math.max(0.01, Number((item.close + wave + drift).toFixed(2)));
+    const open = Math.max(0.01, Number((item.open + wave * 0.7 + drift * 0.5).toFixed(2)));
+    const high = Number((Math.max(open, close) + 0.3 + (hash % 7) * 0.06).toFixed(2));
+    const low = Number((Math.max(0.01, Math.min(open, close) - 0.3 - (hash % 5) * 0.05)).toFixed(2));
+
+    return {
+      ...item,
+      open,
+      high,
+      low,
+      close,
+    };
+  });
+}
+
 export async function GET(request: NextRequest) {
   const market = (request.nextUrl.searchParams.get("market") ?? "crypto").trim();
+  const rawSymbol = (request.nextUrl.searchParams.get("symbol") ?? "").trim().toUpperCase();
   const symbol = normalizeSymbol(request.nextUrl.searchParams.get("symbol") ?? "BTCUSDT");
   const interval = request.nextUrl.searchParams.get("interval") ?? "15m";
   const limitParam = Number(request.nextUrl.searchParams.get("limit") ?? "300");
@@ -58,9 +92,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const seedPrice = market === "idx" ? 9_000 : 190;
-    return ok(generateCandles(limit, seedPrice), {
-      symbol: request.nextUrl.searchParams.get("symbol") ?? "",
+    return ok(makeFallbackCandles(rawSymbol, market, limit), {
+      symbol: rawSymbol,
       interval,
       limit,
       source: "mock-fallback",
