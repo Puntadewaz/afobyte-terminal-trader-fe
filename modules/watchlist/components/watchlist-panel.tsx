@@ -73,7 +73,7 @@ export function WatchlistPanel() {
       <CardContent className="overflow-x-auto">
         <div className="rounded-lg border border-zinc-800 p-2">
           <MarketSummaryWidget
-            minHeight={560}
+            minHeight={760}
             tabs={[
               { title: "Crypto", symbols: cryptoSymbols },
               { title: "US", symbols: usSymbols },
