@@ -9,12 +9,20 @@ import { useUiStore } from "@/stores/ui-store";
 export function Sidebar() {
   const pathname = usePathname();
   const isCollapsed = useUiStore((state) => state.isSidebarCollapsed);
+  const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);
+
+  function handleNavigate() {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      setSidebarCollapsed(false);
+    }
+  }
 
   return (
     <aside
       className={cn(
-        "border-r border-zinc-800 bg-zinc-950 transition-all duration-200",
-        isCollapsed ? "w-20" : "w-72",
+        "fixed inset-y-0 left-0 z-40 border-r border-zinc-800 bg-zinc-950 transition-all duration-200 md:static md:translate-x-0",
+        isCollapsed ? "translate-x-0 w-72 md:w-20" : "-translate-x-full md:w-72",
       )}
     >
       <div className="border-b border-zinc-800 px-4 py-4">
@@ -33,6 +41,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={handleNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 isActive

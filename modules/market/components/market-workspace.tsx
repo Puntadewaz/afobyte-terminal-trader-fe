@@ -22,6 +22,7 @@ const labelMap: Record<MarketKind, string> = {
 };
 
 const CHART_INTERVALS: CandleInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
+const DEFAULT_USD_TO_IDR_RATE = 16_000;
 
 const INDICATOR_LABELS = {
   ema20: "EMA20",
@@ -32,6 +33,7 @@ const INDICATOR_LABELS = {
 } as const;
 
 type IndicatorKey = keyof typeof INDICATOR_LABELS;
+type PriceCurrency = "USD" | "IDR";
 
 function recommendationVariant(recommendation?: string) {
   if (!recommendation) return "neutral" as const;
@@ -70,6 +72,7 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
 
   const [selectedSymbol, setSelectedSymbol] = useState(() => (market === "crypto" ? "" : defaultSymbol));
   const [chartInterval, setChartInterval] = useState<CandleInterval>("15m");
+  const [currency, setCurrency] = useState<PriceCurrency>("USD");
   const [indicatorVisibility, setIndicatorVisibility] = useState<Record<IndicatorKey, boolean>>({
     ema20: true,
     ema50: true,
@@ -104,6 +107,20 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
   const querySymbol = activeSymbol || undefined;
   const { data: candles, isLoading } = useCandleQuery(market, querySymbol, chartInterval);
   const { data: analysis, isLoading: isAnalysisLoading } = useAnalysisQuery(market, querySymbol);
+  const usdToIdrRate = Number(process.env.NEXT_PUBLIC_USD_TO_IDR_RATE ?? DEFAULT_USD_TO_IDR_RATE);
+
+  const chartCandles = useMemo(() => {
+    if (!candles) return candles;
+    if (currency === "USD") return candles;
+
+    return candles.map((item) => ({
+      ...item,
+      open: Number((item.open * usdToIdrRate).toFixed(2)),
+      high: Number((item.high * usdToIdrRate).toFixed(2)),
+      low: Number((item.low * usdToIdrRate).toFixed(2)),
+      close: Number((item.close * usdToIdrRate).toFixed(2)),
+    }));
+  }, [candles, currency, usdToIdrRate]);
 
   const structureConfidence: "low" | "medium" | "high" =
     (analysis?.probability.confidence ?? 0) >= 70
@@ -194,13 +211,34 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
               </option>
             ))}
           </Select>
+
+          <div className="flex items-center overflow-hidden rounded-md border border-zinc-700">
+            <Button
+              type="button"
+              size="sm"
+              variant={currency === "USD" ? "secondary" : "outline"}
+              className="rounded-none border-0"
+              onClick={() => setCurrency("USD")}
+            >
+              USD
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={currency === "IDR" ? "secondary" : "outline"}
+              className="rounded-none border-0"
+              onClick={() => setCurrency("IDR")}
+            >
+              IDR
+            </Button>
+          </div>
         </div>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex w-full items-center justify-between gap-2">
-            <CardTitle>Lightweight Chart (TradingView Library) - {chartInterval}</CardTitle>
+            <CardTitle>Lightweight Chart (TradingView Library) - {chartInterval} ({currency})</CardTitle>
             <Button
               type="button"
               variant="outline"
@@ -229,10 +267,10 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
 
           {isWaitingForRankingSymbol ? (
             <p className="text-sm text-zinc-400">Waiting symbol from rankings...</p>
-          ) : isLoading || !candles ? (
+          ) : isLoading || !chartCandles ? (
             <p className="text-sm text-zinc-400">Rendering chart...</p>
           ) : (
-            <LightweightChart ref={chartRef} data={candles} indicators={indicatorVisibility} />
+            <LightweightChart ref={chartRef} data={chartCandles} indicators={indicatorVisibility} />
           )}
         </CardContent>
       </Card>
@@ -349,7 +387,7 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
         </CardContent>
       </Card>
 
-      <AnalysisPanel market={market} symbol={activeSymbol} />
+      <AnalysisPanel market={market} symbol={activeSymbol} currency={currency} usdToIdrRate={usdToIdrRate} />
 
       {market === "crypto" ? (
         <Card className="border-amber-700/50">

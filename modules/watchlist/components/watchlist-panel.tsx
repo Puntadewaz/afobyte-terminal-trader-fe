@@ -11,7 +11,7 @@ export function WatchlistPanel() {
       <CardHeader>
         <CardTitle>Crypto Watchlist</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 overflow-x-auto">
         {isLoading ? <p className="text-sm text-zinc-400">Loading watchlist...</p> : null}
         {error ? <p className="text-sm text-red-400">Failed to load watchlist.</p> : null}
 

@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { MarketKind } from "@/types/market";
 
+type PriceCurrency = "USD" | "IDR";
+
 function riskVariant(risk: string) {
   if (risk === "low") return "bullish" as const;
   if (risk === "medium") return "info" as const;
@@ -13,7 +15,17 @@ function riskVariant(risk: string) {
   return "bearish" as const;
 }
 
-export function AnalysisPanel({ market, symbol }: { market: MarketKind; symbol?: string }) {
+export function AnalysisPanel({
+  market,
+  symbol,
+  currency = "USD",
+  usdToIdrRate = 16_000,
+}: {
+  market: MarketKind;
+  symbol?: string;
+  currency?: PriceCurrency;
+  usdToIdrRate?: number;
+}) {
   const { data, isLoading } = useAnalysisQuery(market, symbol);
 
   if (isLoading || !data) {
@@ -41,9 +53,9 @@ export function AnalysisPanel({ market, symbol }: { market: MarketKind; symbol?:
           <Info label="Manipulation Risk" value={data.manipulationRisk} />
           <Info label="Suggested Style" value={data.suggestedStyle} />
           <Info label="Holding Duration" value={data.holdingDuration} />
-          <Info label="Entry Zone" value={formatEntryZone(data.entryZone)} />
-          <Info label="Take Profit" value={formatTakeProfits(data.takeProfits)} />
-          <Info label="Cut Loss" value={formatPrice(data.cutLoss)} />
+          <Info label={`Entry Zone (${currency})`} value={formatEntryZone(data.entryZone, currency, usdToIdrRate)} />
+          <Info label={`Take Profit (${currency})`} value={formatTakeProfits(data.takeProfits, currency, usdToIdrRate)} />
+          <Info label={`Cut Loss (${currency})`} value={formatPrice(data.cutLoss, currency, usdToIdrRate)} />
           <Info label="Quality Score" value={data.qualityScore !== undefined ? formatMetric(data.qualityScore) : "n/a"} />
           <Info label="Agreement Score" value={data.agreementScore !== undefined ? formatMetric(data.agreementScore) : "n/a"} />
           <Info
@@ -124,19 +136,26 @@ function formatMetric(value: number): string {
   return value.toFixed(2);
 }
 
-function formatPrice(value: number): string {
+function formatPrice(value: number, currency: PriceCurrency, usdToIdrRate: number): string {
   if (!Number.isFinite(value) || value <= 0) return "n/a";
-  return value.toFixed(2);
+  const multiplier = currency === "IDR" ? usdToIdrRate : 1;
+  const converted = value * multiplier;
+  const locale = currency === "IDR" ? "id-ID" : "en-US";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: currency === "IDR" ? 0 : 2,
+  }).format(converted);
 }
 
-function formatEntryZone([min, max]: [number, number]): string {
+function formatEntryZone([min, max]: [number, number], currency: PriceCurrency, usdToIdrRate: number): string {
   if (min <= 0 && max <= 0) return "n/a";
-  return `${formatPrice(min)} - ${formatPrice(max)}`;
+  return `${formatPrice(min, currency, usdToIdrRate)} - ${formatPrice(max, currency, usdToIdrRate)}`;
 }
 
-function formatTakeProfits(values: number[]): string {
+function formatTakeProfits(values: number[], currency: PriceCurrency, usdToIdrRate: number): string {
   if (values.length === 0) return "n/a";
-  return values.map((value) => formatPrice(value)).join(" / ");
+  return values.map((value) => formatPrice(value, currency, usdToIdrRate)).join(" / ");
 }
 
 function Metric({ label, value }: { label: string; value: number }) {

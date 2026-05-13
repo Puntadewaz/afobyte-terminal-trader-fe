@@ -6,6 +6,7 @@ interface UiStore {
   isSidebarCollapsed: boolean;
   setMarket: (market: UiStore["selectedMarket"]) => void;
   setAnalysisMode: (mode: UiStore["analysisMode"]) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
 }
 
@@ -15,6 +16,7 @@ export const useUiStore = create<UiStore>((set) => ({
   isSidebarCollapsed: false,
   setMarket: (selectedMarket) => set({ selectedMarket }),
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
+  setSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),
   toggleSidebar: () =>
     set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
 }));
