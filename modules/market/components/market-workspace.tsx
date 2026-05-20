@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LightweightChart, type LightweightChartHandle } from "@/components/charts/lightweight-chart";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +108,13 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
   const [snapshotAnalysis, setSnapshotAnalysis] = useState<SnapshotAnalysisResult | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [isSnapshotLoading, setIsSnapshotLoading] = useState(false);
+
+  useEffect(() => {
+    if (mode !== "swing") {
+      setMode("swing");
+    }
+  }, [mode, setMode]);
+
   const isWaitingForRankingSymbol = market === "crypto" && recommendedSymbols.length === 0;
   const activeSymbol = recommendedSymbols.includes(selectedSymbol)
     ? selectedSymbol
@@ -262,12 +269,10 @@ export function MarketWorkspace({ market }: { market: MarketKind }) {
           <Select
             value={mode}
             onChange={(event) =>
-              setMode(event.target.value as "long-term" | "swing" | "intraday")
+              setMode(event.target.value as "swing")
             }
           >
-            <option value="long-term">Long-term</option>
             <option value="swing">Swing</option>
-            <option value="intraday">Intraday</option>
           </Select>
 
           <Select

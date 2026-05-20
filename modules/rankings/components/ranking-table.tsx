@@ -1,17 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRankingsQuery, type RankingsType } from "@/hooks/use-rankings";
+import { useRankingsQuery } from "@/hooks/use-rankings";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-type RankingsTab = "crypto" | "us_stock";
-
-const tabLabel: Record<RankingsTab, string> = {
-  crypto: "Crypto",
-  us_stock: "US Stocks",
-};
 
 function delta(rank: number, previousRank: number): string {
   const d = previousRank - rank;
@@ -28,56 +19,19 @@ function stateVariant(state: string) {
 }
 
 export function RankingTable() {
-  const [activeTab, setActiveTab] = useState<RankingsTab>("crypto");
-  const [rankingType, setRankingType] = useState<RankingsType>("swing");
-  const { data, isLoading } = useRankingsQuery(20, activeTab, rankingType);
+  const { data, isLoading } = useRankingsQuery(20, "crypto", "swing");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Top Opportunity Rankings</CardTitle>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={activeTab === "crypto" ? "secondary" : "outline"}
-            onClick={() => setActiveTab("crypto")}
-          >
-            Crypto
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={activeTab === "us_stock" ? "secondary" : "outline"}
-            onClick={() => setActiveTab("us_stock")}
-          >
-            US Stocks
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={rankingType === "swing" ? "secondary" : "outline"}
-            onClick={() => setRankingType("swing")}
-          >
-            Swing
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={rankingType === "intraday" ? "secondary" : "outline"}
-            onClick={() => setRankingType("intraday")}
-          >
-            Intraday
-          </Button>
-        </div>
+        <p className="text-sm text-zinc-400">Market: Crypto | Mode: Swing</p>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         {isLoading || !data ? (
           <p className="text-sm text-zinc-400">Loading rankings...</p>
         ) : data.length === 0 ? (
-          <p className="text-sm text-zinc-400">No {tabLabel[activeTab]} rankings returned by API.</p>
+          <p className="text-sm text-zinc-400">No crypto swing rankings returned by API.</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-zinc-400">

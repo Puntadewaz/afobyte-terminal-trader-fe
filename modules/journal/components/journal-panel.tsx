@@ -26,18 +26,14 @@ const STORAGE_KEY = "journal-simple-v1";
 
 export function JournalPanel() {
   const { data: cryptoRankings } = useRankingsQuery(20, "crypto", "swing");
-  const { data: usRankings } = useRankingsQuery(20, "us_stock", "swing");
   const symbols = useMemo(() => {
     const rows = [
       ...(cryptoRankings ?? []).map((item) => item.symbol),
-      ...(usRankings ?? []).map((item) => item.symbol),
       "BTCUSDT",
       "ETHUSDT",
-      "AAPL",
-      "MSFT",
     ];
     return rows.filter((value, index, all) => Boolean(value) && all.indexOf(value) === index);
-  }, [cryptoRankings, usRankings]);
+  }, [cryptoRankings]);
 
   const [rows, setRows] = useState<JournalRow[]>(() => {
     if (typeof window === "undefined") return [];

@@ -13,7 +13,6 @@ export function CapitalPlanner() {
   const [days, setDays] = useState("7");
 
   const { data: cryptoRankings, isLoading: isCryptoLoading } = useRankingsQuery(3, "crypto", "swing");
-  const { data: usRankings, isLoading: isUsLoading } = useRankingsQuery(3, "us_stock", "swing");
 
   const parsedCapital = Number(capital);
   const parsedTarget = Number(target);
@@ -131,23 +130,15 @@ export function CapitalPlanner() {
           <CardTitle>Rekomendasi Aset</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-zinc-300">
-          {isCryptoLoading || isUsLoading ? (
+          {isCryptoLoading ? (
             <p>Loading recommendations...</p>
           ) : (
-            <>
-              <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-zinc-500">Top Crypto (Swing)</p>
-                {(cryptoRankings ?? []).slice(0, 3).map((row) => (
-                  <p key={row.symbol} className="mt-1">- {row.symbol} (score {row.score.toFixed(5)})</p>
-                ))}
-              </div>
-              <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-zinc-500">Top US Stock (Swing)</p>
-                {(usRankings ?? []).slice(0, 3).map((row) => (
-                  <p key={row.symbol} className="mt-1">- {row.symbol} (score {row.score.toFixed(5)})</p>
-                ))}
-              </div>
-            </>
+            <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
+              <p className="text-xs uppercase tracking-[0.12em] text-zinc-500">Top Crypto (Swing)</p>
+              {(cryptoRankings ?? []).slice(0, 3).map((row) => (
+                <p key={row.symbol} className="mt-1">- {row.symbol} (score {row.score.toFixed(5)})</p>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

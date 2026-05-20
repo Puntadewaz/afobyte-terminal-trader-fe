@@ -35,8 +35,6 @@ function toTvSymbols(symbols: string[], market: "crypto" | "us" | "idx"): string
 
 export function WatchlistPanel() {
   const envCrypto = parseCsv(process.env.NEXT_PUBLIC_SYMBOLS_CRYPTO);
-  const envUs = parseCsv(process.env.NEXT_PUBLIC_SYMBOLS_US);
-  const envIdx = parseCsv(process.env.NEXT_PUBLIC_SYMBOLS_IDX);
 
   const cryptoSymbols = useMemo(
     () =>
@@ -45,24 +43,6 @@ export function WatchlistPanel() {
         "crypto",
       ),
     [envCrypto],
-  );
-
-  const usSymbols = useMemo(
-    () =>
-      toTvSymbols(
-        envUs.length > 0 ? envUs : ["AAPL", "MSFT", "NVDA", "TSLA"],
-        "us",
-      ),
-    [envUs],
-  );
-
-  const idxSymbols = useMemo(
-    () =>
-      toTvSymbols(
-        envIdx.length > 0 ? envIdx : ["BBCA", "BBRI", "TLKM", "BMRI"],
-        "idx",
-      ),
-    [envIdx],
   );
 
   return (
@@ -76,8 +56,6 @@ export function WatchlistPanel() {
             minHeight={760}
             tabs={[
               { title: "Crypto", symbols: cryptoSymbols },
-              { title: "US", symbols: usSymbols },
-              { title: "IDX", symbols: idxSymbols },
             ]}
           />
         </div>
